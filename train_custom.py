@@ -20,10 +20,10 @@ print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 def main(args=None):
 
-    csv_train   = 'toy_annots.csv'
-    csv_classes = 'toy_class_list.csv'
-    csv_val     = 'toy_annots.csv'
-    model_path  = 'model_final_v999.pt'
+    csv_train   = 'my_annotations.csv'
+    csv_classes = 'my_class_list.csv'
+    csv_val     = 'my_annotations.csv'
+    model_path  = 'model_weights_test.pt'
  
     depth       = 18
     batch_size  = 8

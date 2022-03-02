@@ -9,36 +9,33 @@ from   retinanet.dataloader import CSVDataset, Resizer, Normalizer
 
 assert torch.__version__.split('.')[0] == '1'
 
-# Load list of scans in validation set
-valid_scans = np.loadtxt('data/clavicula_sets/test_scans.csv', delimiter=",", dtype=str)
+# Directories containing slices of CT scans (stored as jpgs)
+ct_scan_dirs = ['data/ct_scan_0', 'data/ct_scan_1', 'data/ct_scan_2']
 
-# Get image directories containing slices of the validation set (stored as jpgs)
-image_dirs = []
+# Specify trained model weights
+model_path = 'model_weights.pt'
 
-for study in valid_scans:
-    patient   = study.split('_')[0]
-    image_dir = '/data/public/age_estimation/jpg/ae_{:s}/ae_{:s}'.format(patient, study)
-    image_dirs.append(image_dir)
-    
+# Specify class list
+class_list_path = 'my_class_list.csv'
+
 # Write annotations for validation set images
-for image_dir in image_dirs:
+for ct_scan_dir in ct_scan_dirs:
 
     annot_strings = []
 
-    for image in Path(image_dir).iterdir():
-        if str(image.name).startswith('ae_') and image.is_file():
+    for ct_scan in Path(ct_scan_dir).iterdir():
+        if str(ct_scan.name).startswith('ae_') and ct_scan.is_file():
 
-            annot_string = str(image) + ',,,,,'
+            annot_string = str(ct_scan) + ',,,,,'
             annot_strings.append(annot_string)
 
-    with open(image_dir+"/annots.csv", "w") as csv_file:
+    annot_strings.sort()
+            
+    with open(ct_scan_dir+"/validation_annotations.csv", "w") as csv_file:
         for annot_string in annot_strings:
             csv_file.write(annot_string+'\n')
 
-class_list_path      = 'clavicula_class_list.csv'
-model_path           = 'model_final_v2.pt'
-
-def predict_ct(class_list_path, image_dirs, model_path):
+def model_inference(class_list_path, ct_scan_dirs, model_path):
 
     # Create the model
     retinanet=torch.load(model_path)
@@ -59,21 +56,22 @@ def predict_ct(class_list_path, image_dirs, model_path):
     retinanet.training = False
     retinanet.eval()
     
-    for image_dir in image_dirs:
+    for ct_scan_dir in ct_scan_dirs:
         
-        print('\nPredict image_dir: {:s}'.format(image_dir))
+        print('\nApply model to images in: {:s}'.format(ct_scan_dir))
         
-        csv_annotations_path = image_dir + '/annots.csv'
+        csv_annotations_path = ct_scan_dir + '/validation_annotations.csv'
         
         dataset_val = CSVDataset(csv_annotations_path, class_list_path, transform=transforms.Compose([Normalizer(), Resizer()]))
 
         # Load annotations
-        print('Load annotations: {:s}'.format(csv_annotations_path))
-        df_annots = pd.read_csv(csv_annotations_path, names=['image_path','x1','y1','x2','y2','class_name'])  
+        print('Load annotations from: {:s}'.format(csv_annotations_path))
+        df_annots = pd.read_csv(csv_annotations_path, names=['image_path','x1','y1','x2','y2','class_name'])
 
+        print('Load images and make predictions...')
         all_detections = csv_predict.predict(dataset_val, retinanet, score_threshold=0.0)
         n_detections   = len(all_detections)
-        print('number of detections: {:d}'.format(n_detections))
+        print('Number of detections: {:d}'.format(n_detections))
 
         predictions_string = []
         class_col          = 0
@@ -105,10 +103,9 @@ def predict_ct(class_list_path, image_dirs, model_path):
             predictions_string.append(pred_string)
 
         # Save results
-        study_id = df_annots['image_path'][0].split('age_estimation/jpg/')[-1].split('/')[0]
-        scan_id  = df_annots['image_path'][0].split('age_estimation/jpg/')[-1].split('/')[1]
+        ct_scan_id  = df_annots['image_path'][0].split('/')[1]
         
-        predictions_path = 'test_results_v2/' + study_id + '/' + scan_id + '.csv'
+        predictions_path = 'results/' + ct_scan_id + '/' + ct_scan_id + '_predictions.csv'
         predictions_path = Path(predictions_path)
 
         if not predictions_path.parent.is_dir():
@@ -119,4 +116,4 @@ def predict_ct(class_list_path, image_dirs, model_path):
             for pred_string in predictions_string:
                 csv_file.write(pred_string)
 
-predict_ct(class_list_path, image_dirs, model_path)
+model_inference(class_list_path, ct_scan_dirs, model_path)

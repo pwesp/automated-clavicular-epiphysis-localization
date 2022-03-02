@@ -127,3 +127,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Data
+data/ct_scan_0/
+data/ct_scan_1/
+data/ct_scan_2/
+
+# Directories
+results/
+to-be-deleted/
