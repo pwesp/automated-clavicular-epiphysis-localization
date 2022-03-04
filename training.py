@@ -26,8 +26,8 @@ def main(args=None):
     model_path  = 'model_weights_test.pt'
  
     depth       = 18
-    batch_size  = 8
-    epochs      = 20
+    batch_size  = 1
+    epochs      = 2
     
     # Training dataset
     dataset_train = CSVDataset(train_file=csv_train,
