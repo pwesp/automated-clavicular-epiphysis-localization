@@ -5,10 +5,11 @@ import numpy as np
 
 import torch
 import torch.optim as optim
-from torchvision import transforms
+from   torchvision import transforms
 
 from retinanet import model
 from retinanet.dataloader import CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, Normalizer
+from pathlib import Path
 from torch.utils.data import DataLoader
 
 from retinanet import csv_eval
@@ -28,6 +29,8 @@ def main(args=None):
     depth       = 18
     batch_size  = 1
     epochs      = 2
+    
+    evaluate_validation_set = False
     
     # Training dataset
     dataset_train = CSVDataset(train_file=csv_train,
@@ -185,8 +188,8 @@ def main(args=None):
             valid_info = str(epoch_num) + ',' + str(np.mean(validation_loss_tot)) + ',' + str(np.mean(validation_loss_cls)) + ',' + str(np.mean(validation_loss_reg)) + '\n'
             valid_hist.append(valid_info)
         
-        # Evaluation
-        if csv_val is not None:
+        # Evaluate validation set
+        if csv_val is not None and evaluate_validation_set:
 
             #print('Evaluating training set')
             #train_mAP_epoch, train_IoU_epoch = csv_eval.evaluate(dataset_train, retinanet, verbose=True)
@@ -195,7 +198,7 @@ def main(args=None):
             valid_mAP_epoch, valid_IoU_epoch = csv_eval.evaluate(dataset_val, retinanet, verbose=True)
             
             # Construct history string
-            eval_info = str(epoch_num) + ',' + '0' + ',' + str(valid_mAP_epoch[0][0]) + ',' + '0' + ',' + str(valid_IoU_epoch) + '\n'
+            eval_info = str(epoch_num) + ',' + '0' + ',' + str(valid_mAP_epoch[0][0]) + ',' + '0' + ',' + str(valid_IoU_epoch[0]) + '\n'
             eval_hist.append(eval_info)
             
         scheduler.step(np.mean(epoch_loss))
@@ -209,19 +212,19 @@ def main(args=None):
     # Save training and validation history
     save_history = True
     if save_history:
+        
+        history_path = Path('results/history')
+        if not history_path.parent.is_dir():
+            history_path.parent.mkdir(parents=True)
+        
         # Save training history
-        with open("history/train_history_v999.csv", "w") as csv_file:
+        with open("results/history/training_history.csv", "w") as csv_file:
             for info in train_hist:
                 csv_file.write(info)
 
         # Save validation history
-        with open("history/valid_history_v999.csv", "w") as csv_file:
+        with open("results/history/validation_history.csv", "w") as csv_file:
             for info in valid_hist:
-                csv_file.write(info)
-                
-        # Save evaluation history
-        with open("history/eval_history_v999.csv", "w") as csv_file:
-            for info in eval_hist:
                 csv_file.write(info)
 
 if __name__ == '__main__':

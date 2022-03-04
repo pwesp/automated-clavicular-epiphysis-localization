@@ -1,7 +1,6 @@
 from __future__ import print_function
 
 import numpy as np
-import json
 import os
 import matplotlib.pyplot as plt
 import torch
@@ -176,7 +175,8 @@ def evaluate(
     all_annotations    = _get_annotations(generator)
        
     average_precisions = {}
-
+    average_ious       = {}
+    
     # loop through class labels (here num_classes = 1 --> 'sternum')
     for label in range(generator.num_classes()):
         false_positives = np.zeros((0,))
@@ -215,10 +215,19 @@ def evaluate(
                     false_positives = np.append(false_positives, 1)
                     true_positives  = np.append(true_positives, 0) 
                 ious = np.append(ious, max_overlap)
-
+                
         # no annotations -> AP for this class is 0 (is this correct?)
         if num_annotations == 0:
             average_precisions[label] = 0, 0
+            average_ious[label]       = 0
+            continue
+        
+        if false_positives.shape[0]==0 and true_positives.shape[0]==0 and num_annotations > 0:
+            print('No positive detections')
+            average_precisions[label] = 0, 0
+            average_ious[label]       = 0
+            verbose = False
+            save_path = None
             continue
         
         # evaluate predictions for current class across all images
@@ -242,7 +251,7 @@ def evaluate(
         average_precisions[label] = average_precision, num_annotations
         
         # compute average IoU
-        average_iou = np.mean(ious)
+        average_ious[label] = np.mean(ious)
 
     if verbose:
         print('\nmAP:')
@@ -252,7 +261,7 @@ def evaluate(
             print('{}: {}'.format(label_name, average_precisions[label][0]))
             print('Precision: ', precision[-1])
             print('Recall:    ', recall[-1])
-            print('IoU:       ', average_iou)
+            print('IoU:       ', average_ious[label])
         
         if save_path!=None:
             plt.plot(recall,precision)
@@ -267,5 +276,5 @@ def evaluate(
             # function to show the plot
             plt.savefig(save_path+'/'+label_name+'_precision_recall.jpg')
     
-    return average_precisions, average_iou
+    return average_precisions, average_ious
 
